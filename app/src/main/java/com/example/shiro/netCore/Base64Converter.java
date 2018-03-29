@@ -23,10 +23,9 @@ public  class Base64Converter
         return encodedBytes;
     }
 
-    public  byte[] encodeRGB (JSONEntity data)
+    public  String encodeRGB (JSONEntity data)
     {
         string = gson.toJson(data);
-        byte[] encodedBytes = string.getBytes();
-        return encodedBytes;
+       return string;
     }
 }
