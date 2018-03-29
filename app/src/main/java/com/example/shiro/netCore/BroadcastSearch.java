@@ -23,7 +23,7 @@ public class BroadcastSearch
         ServiceFinder finder = new ServiceFinder();
         finder.addListener(mListener);
         finder.startListening();
-        finder.findServers(SERVICE_ID, 0);
+        finder.findServers(SERVICE_ID,0 );
         try {
             Thread.sleep(1000);
         }
@@ -33,7 +33,7 @@ public class BroadcastSearch
         }
 
 
-        finder.stopListening();
+        //finder.stopListening();
 
         return ip;
 

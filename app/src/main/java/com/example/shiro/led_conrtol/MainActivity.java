@@ -12,7 +12,6 @@ import android.widget.TextView;
 
 import com.example.shiro.netCore.Base64Converter;
 import com.example.shiro.netCore.BroadcastSearch;
-import com.example.shiro.netCore.DataHelper;
 import com.example.shiro.netCore.JSONEntity;
 
 import org.eclipse.paho.android.service.MqttAndroidClient;
@@ -26,14 +25,12 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
-import java.io.IOException;
-
 public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener {
 
     private SeekBar mRedSeekBar, mGreenSeekBar, mBlueSeekBar;
     private Switch mPowerSwitch;
     private TextView mText;
-    private DataHelper serverCon = null;
+
     private BroadcastSearch search = new BroadcastSearch();
 
     private static final String LOG_TAG = "Data Service";
@@ -193,7 +190,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                 @Override
                 public void run() {
                     try {
-                        jsonEntity.setJSON(0, mRedSeekBar.getProgress(), mGreenSeekBar.getProgress(), mBlueSeekBar.getProgress());
+                        jsonEntity.setJSON( mRedSeekBar.getProgress(), mGreenSeekBar.getProgress(), mBlueSeekBar.getProgress());
 
 
                         publishMessage(converter.encodeRGB(jsonEntity));
@@ -241,7 +238,7 @@ protected void onStart ()
 protected void onDestroy ()
 {
     super.onDestroy();
-    serverCon.closeConnection();
+
 }
 
 
