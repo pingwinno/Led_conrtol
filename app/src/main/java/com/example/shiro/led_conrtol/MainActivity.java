@@ -13,6 +13,7 @@ import android.widget.TextView;
 import com.example.shiro.netCore.Base64Converter;
 import com.example.shiro.netCore.BroadcastSearch;
 import com.example.shiro.netCore.JSONEntity;
+import com.google.gson.Gson;
 
 import org.eclipse.paho.android.service.MqttAndroidClient;
 import org.eclipse.paho.client.mqttv3.DisconnectedBufferOptions;
@@ -30,6 +31,9 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
     private SeekBar mRedSeekBar, mGreenSeekBar, mBlueSeekBar;
     private Switch mPowerSwitch;
     private TextView mText;
+    private JSONEntity powerOff = new JSONEntity(0,0,0);
+    private Gson gson = new Gson();
+    private JSONEntity storedJson = new JSONEntity();
 
     private BroadcastSearch search = new BroadcastSearch();
 
@@ -41,13 +45,14 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
     final String serverUri = "tcp://192.168.1.201:1883";
 
     String clientId = "ExampleAndroidClient";
-    final String subscriptionTopic = "test";
-    final String publishTopic = "test";
+
+    final String topic = "test";
+    final String topic2 = "test1";
 
 
 
 
-    Base64Converter converter = new Base64Converter();
+
 
 
     @Override
@@ -84,18 +89,18 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mPowerSwitch = (Switch) findViewById(R.id.power_switch);
+        mPowerSwitch =  findViewById(R.id.power_switch);
         if (mPowerSwitch != null)
         {
             mPowerSwitch.setOnCheckedChangeListener(this);
 
         }
 
-        mText = (TextView) findViewById(R.id.text);
+        mText = findViewById(R.id.text);
 
-        mRedSeekBar = (SeekBar) findViewById(R.id.seekBar_Red);
-        mGreenSeekBar = (SeekBar) findViewById(R.id.seekBar_Green);
-        mBlueSeekBar = (SeekBar) findViewById(R.id.seekBar_Blue);
+        mRedSeekBar =  findViewById(R.id.seekBar_Red);
+        mGreenSeekBar =  findViewById(R.id.seekBar_Green);
+        mBlueSeekBar =  findViewById(R.id.seekBar_Blue);
 
         mRedSeekBar.setOnSeekBarChangeListener(seekBarChangeListener);
         mBlueSeekBar.setOnSeekBarChangeListener(seekBarChangeListener);
@@ -113,7 +118,8 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                 if (reconnect) {
                     Log.e(LOG_TAG,"Reconnected to : " + serverURI);
                     // Because Clean Session is true, we need to re-subscribe
-                    subscribeToTopic();
+                    subscribeToTopic(topic);
+                    subscribeToTopic(topic2);
                 } else {
                     Log.e(LOG_TAG,"Connected to: " + serverURI);
                 }
@@ -126,7 +132,27 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
             @Override
             public void messageArrived(String topic, MqttMessage message) throws Exception {
-                Log.e(LOG_TAG,"Incoming message: " + new String(message.getPayload()));
+                String query = new String(message.getPayload());
+
+                Log.e(LOG_TAG,"Incoming message: " + query);
+
+                if (query.contains("r"))
+                {
+                    storedJson = gson.fromJson(query,JSONEntity.class);
+                    mRedSeekBar.setProgress(storedJson.getR());
+                    mGreenSeekBar.setProgress(storedJson.getG());
+                    mBlueSeekBar.setProgress(storedJson.getB());
+                }
+                else if (query.equals("1"))
+                {
+                    mPowerSwitch.setChecked(true);
+                }
+                else if (query.equals("0"))
+                {
+                    mPowerSwitch.setChecked(false);
+                }
+
+
             }
 
             @Override
@@ -156,7 +182,9 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                     disconnectedBufferOptions.setPersistBuffer(false);
                     disconnectedBufferOptions.setDeleteOldestMessages(false);
                     mqttAndroidClient.setBufferOpts(disconnectedBufferOptions);
-                    subscribeToTopic();
+                    subscribeToTopic(topic);
+                    subscribeToTopic(topic2);
+                    publishMessage( "query",topic2);
                 }
 
                 @Override
@@ -177,6 +205,13 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
     public void onCheckedChanged(CompoundButton buttonView, boolean isChecked)
     {
 
+        if(isChecked)
+        {
+            publishMessage( "1",topic2); }
+        else
+            {
+                publishMessage( "0",topic2);
+        }
 
     }
 
@@ -190,10 +225,10 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                 @Override
                 public void run() {
                     try {
-                        jsonEntity.setJSON( mRedSeekBar.getProgress(), mGreenSeekBar.getProgress(), mBlueSeekBar.getProgress());
+                       jsonEntity.setJSON( mRedSeekBar.getProgress(), mGreenSeekBar.getProgress(), mBlueSeekBar.getProgress());
 
 
-                        publishMessage(converter.encodeRGB(jsonEntity));
+                        publishMessage(gson.toJson(jsonEntity), topic);
 
                     } catch (Exception e) {
                         Log.e(LOG_TAG, e.getMessage());
@@ -214,7 +249,21 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
         @Override
         public void onStopTrackingTouch(SeekBar seekBar) {
 
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        jsonEntity.setJSON( mRedSeekBar.getProgress(), mGreenSeekBar.getProgress(), mBlueSeekBar.getProgress());
 
+
+                        publishMessage(gson.toJson(jsonEntity), topic2);
+
+                    } catch (Exception e) {
+                        Log.e(LOG_TAG, e.getMessage());
+                    }
+
+                }
+            }).start();
 
 
         }
@@ -222,7 +271,9 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 @Override
 protected void onStart ()
 {
+
     super.onStart();
+
 
 
 
@@ -237,14 +288,17 @@ protected void onStart ()
 @Override
 protected void onDestroy ()
 {
+
+
+
     super.onDestroy();
 
 }
 
 
-    public void subscribeToTopic(){
+    public void subscribeToTopic(String topic){
         try {
-            mqttAndroidClient.subscribe(subscriptionTopic, 0, null, new IMqttActionListener() {
+            mqttAndroidClient.subscribe(topic, 0, null, new IMqttActionListener() {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
                     Log.e(LOG_TAG,"Subscribed!");
@@ -256,14 +310,7 @@ protected void onDestroy ()
                 }
             });
 
-            // THIS DOES NOT WORK!
-            mqttAndroidClient.subscribe(subscriptionTopic, 0, new IMqttMessageListener() {
-                @Override
-                public void messageArrived(String topic, MqttMessage message) throws Exception {
-                    // message Arrived!
-                    System.out.println("Message: " + topic + " : " + new String(message.getPayload()));
-                }
-            });
+
 
         } catch (MqttException ex){
             System.err.println("Exception whilst subscribing");
@@ -271,7 +318,7 @@ protected void onDestroy ()
         }
     }
 
-    public void publishMessage(String jsonString){
+    public void publishMessage(String jsonString, String publishTopic){
 
         if (mqttAndroidClient.isConnected()) {
             try {
