@@ -207,9 +207,15 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
         if(isChecked)
         {
+            mRedSeekBar.setEnabled(true);
+            mBlueSeekBar.setEnabled(true);
+            mGreenSeekBar.setEnabled(true);
             publishMessage( "1",topic2); }
         else
             {
+                mRedSeekBar.setEnabled(false);
+                mGreenSeekBar.setEnabled(false);
+                mBlueSeekBar.setEnabled(false);
                 publishMessage( "0",topic2);
         }
 
