@@ -136,7 +136,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
                 Log.e(LOG_TAG,"Incoming message: " + query);
 
-                if (query.contains("r"))
+                if (query.contains("r")&& topic.equals(topic2))
                 {
                     storedJson = gson.fromJson(query,JSONEntity.class);
                     mRedSeekBar.setProgress(storedJson.getR());
