@@ -11,6 +11,20 @@ public class JSONEntity {
     private int g;
     private int b;
 
+
+
+    public  JSONEntity()
+    {
+
+    }
+
+    public JSONEntity ( int r, int g, int b)
+    {
+        this.r = r;
+        this.g = g;
+        this.b = b;
+    }
+
     public  void setJSON ( int r, int g, int b)
     {
         this.r = r;
@@ -18,10 +32,20 @@ public class JSONEntity {
         this.b = b;
     }
 
+    public int getR ()
+    {
+        return this.r;
+    }
 
+    public int getG ()
+    {
+        return this.g;
+    }
 
-
-
+    public int getB ()
+    {
+        return this.b;
+    }
 
 
 }
