@@ -1,5 +1,6 @@
 package com.example.shiro.led_conrtol;
 
+import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -9,17 +10,13 @@ import android.widget.CompoundButton;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
-
-import com.example.shiro.netCore.Base64Converter;
 import com.example.shiro.netCore.BroadcastSearch;
 import com.example.shiro.netCore.JSONEntity;
 import com.google.gson.Gson;
-
 import org.eclipse.paho.android.service.MqttAndroidClient;
 import org.eclipse.paho.client.mqttv3.DisconnectedBufferOptions;
 import org.eclipse.paho.client.mqttv3.IMqttActionListener;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
@@ -31,23 +28,17 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
     private SeekBar mRedSeekBar, mGreenSeekBar, mBlueSeekBar;
     private Switch mPowerSwitch;
     private TextView mText;
-    private JSONEntity powerOff = new JSONEntity(0,0,0);
     private Gson gson = new Gson();
     private JSONEntity storedJson = new JSONEntity();
-
     private BroadcastSearch search = new BroadcastSearch();
-
     private static final String LOG_TAG = "Data Service";
     JSONEntity jsonEntity = new JSONEntity();
-
     MqttAndroidClient mqttAndroidClient;
-
     final String serverUri = "tcp://192.168.1.201:1883";
-
     String clientId = "ExampleAndroidClient";
-
     final String topic = "test";
     final String topic2 = "test1";
+    final String topic3 = "test2";
 
 
 
@@ -69,9 +60,8 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
         {
             case R.id.settings:
             {
-                getFragmentManager().beginTransaction()
-                        .replace(android.R.id.content, new PerfFragment())
-                        .commit();
+                Intent intent = new Intent(this, SettingsActivity.class);
+                startActivity(intent);
             }
 
 
@@ -118,8 +108,8 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                 if (reconnect) {
                     Log.e(LOG_TAG,"Reconnected to : " + serverURI);
                     // Because Clean Session is true, we need to re-subscribe
-                    subscribeToTopic(topic);
-                    subscribeToTopic(topic2);
+
+                    subscribeToTopic(topic3);
                 } else {
                     Log.e(LOG_TAG,"Connected to: " + serverURI);
                 }
@@ -136,12 +126,13 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
                 Log.e(LOG_TAG,"Incoming message: " + query);
 
-                if (query.contains("r")&& topic.equals(topic2))
+                if (query.contains("r"))
                 {
                     storedJson = gson.fromJson(query,JSONEntity.class);
                     mRedSeekBar.setProgress(storedJson.getR());
                     mGreenSeekBar.setProgress(storedJson.getG());
                     mBlueSeekBar.setProgress(storedJson.getB());
+                    Log.e(LOG_TAG,"setup complete: " + query);
                 }
                 else if (query.equals("1"))
                 {
@@ -150,6 +141,9 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                 else if (query.equals("0"))
                 {
                     mPowerSwitch.setChecked(false);
+                    mRedSeekBar.setEnabled(false);
+                    mGreenSeekBar.setEnabled(false);
+                    mBlueSeekBar.setEnabled(false);
                 }
 
 
@@ -182,8 +176,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                     disconnectedBufferOptions.setPersistBuffer(false);
                     disconnectedBufferOptions.setDeleteOldestMessages(false);
                     mqttAndroidClient.setBufferOpts(disconnectedBufferOptions);
-                    subscribeToTopic(topic);
-                    subscribeToTopic(topic2);
+                    subscribeToTopic(topic3);
                     publishMessage( "query",topic2);
                 }
 
@@ -207,16 +200,29 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
         if(isChecked)
         {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+
             mRedSeekBar.setEnabled(true);
             mBlueSeekBar.setEnabled(true);
             mGreenSeekBar.setEnabled(true);
-            publishMessage( "1",topic2); }
+            publishMessage( "1",topic2);
+
+            }
+        }).start();
+    }
         else
             {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
                 mRedSeekBar.setEnabled(false);
                 mGreenSeekBar.setEnabled(false);
                 mBlueSeekBar.setEnabled(false);
                 publishMessage( "0",topic2);
+                    }
+                }).start();
         }
 
     }
@@ -225,24 +231,23 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
     private SeekBar.OnSeekBarChangeListener seekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
         @Override
         public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            if (mPowerSwitch.isChecked() == true) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            jsonEntity.setJSON(mRedSeekBar.getProgress(), mGreenSeekBar.getProgress(), mBlueSeekBar.getProgress());
 
 
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                       jsonEntity.setJSON( mRedSeekBar.getProgress(), mGreenSeekBar.getProgress(), mBlueSeekBar.getProgress());
+                            publishMessage(gson.toJson(jsonEntity), topic);
 
+                        } catch (Exception e) {
+                            Log.e(LOG_TAG, e.getMessage());
+                        }
 
-                        publishMessage(gson.toJson(jsonEntity), topic);
-
-                    } catch (Exception e) {
-                        Log.e(LOG_TAG, e.getMessage());
                     }
-
-                }
-            }).start();
-
+                }).start();
+            }
         }
 
         @Override
@@ -252,25 +257,27 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
         }
 
+
         @Override
         public void onStopTrackingTouch(SeekBar seekBar) {
 
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        jsonEntity.setJSON( mRedSeekBar.getProgress(), mGreenSeekBar.getProgress(), mBlueSeekBar.getProgress());
+            if (mPowerSwitch.isChecked() == true) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            jsonEntity.setJSON(mRedSeekBar.getProgress(), mGreenSeekBar.getProgress(), mBlueSeekBar.getProgress());
 
 
-                        publishMessage(gson.toJson(jsonEntity), topic2);
+                            publishMessage(gson.toJson(jsonEntity), topic2);
 
-                    } catch (Exception e) {
-                        Log.e(LOG_TAG, e.getMessage());
+                        } catch (Exception e) {
+                            Log.e(LOG_TAG, e.getMessage());
+                        }
+
                     }
-
-                }
-            }).start();
-
+                }).start();
+            }
 
         }
     };

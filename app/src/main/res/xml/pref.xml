@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <CheckBoxPreference
+        android:key="notif"
+        android:summary="Enable notifications"
+        android:title="Notifications">
+    </CheckBoxPreference>
+    <EditTextPreference
+        android:key="server_address"
+        android:summary="Address of MQTT broker "
+        android:title="Server address">
+    </EditTextPreference>
+    <EditTextPreference
+        android:key="primary_topic"
+        android:summary="Primary topic"
+        android:title="Primary topic">
+    </EditTextPreference>
+    <EditTextPreference
+        android:key="secondary_topic"
+        android:summary="Secondary topic"
+        android:title="Secondary topic">
+    </EditTextPreference>
+    <EditTextPreference
+        android:key="client_ID"
+        android:summary="Client ID"
+        android:title="Client ID">
+    </EditTextPreference>
+
+
+
+
+</PreferenceScreen>
